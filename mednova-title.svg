@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="80" viewBox="0 0 420 80">
+  <defs>
+    <linearGradient id="g1" x1="0" x2="1">
+      <stop offset="0%" stop-color="#45B347"/>
+      <stop offset="100%" stop-color="#1E88E5"/>
+    </linearGradient>
+  </defs>
+  <text x="0" y="54" font-family="Segoe UI, Roboto, Arial, sans-serif" font-size="48" font-weight="700" fill="url(#g1)">Med<tspan fill="#0B63A8">Nova</tspan></text>
+</svg>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedNova Pro | Expiry Alerts</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --primary: #667eea;
+            --primary-light: #764ba2;
+            --primary-dark: #5a67d8;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --text: #2d3748;
+            --text-light: #4a5568;
+            --text-dim: #64748b;
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea, #764ba2);
+            --gradient-secondary: linear-gradient(135deg, #10B981, #34D399);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: radial-gradient(circle at top left, #f8fafc, #f1f5f9); color: var(--text); height: 100vh; display: flex; overflow: hidden; }
+
+        /* SIDEBAR */
+        .sidebar { width: 260px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(20px); border-right: 1px solid rgba(0,0,0,0.05); padding: 30px 15px; display: flex; flex-direction: column; }
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 40px; text-align: center; }
+        .nav-link { padding: 14px 18px; color: var(--text-dim); text-decoration: none; display: flex; align-items: center; gap: 12px; border-radius: 12px; transition: 0.3s; margin-bottom: 5px; }
+        .nav-link.active { background: rgba(244, 63, 94, 0.1); color: var(--danger); font-weight: 600; }
+        .nav-link:hover:not(.active) { background: rgba(255,255,255,0.05); color: var(--text); }
+
+        /* MAIN */
+        .main { flex: 1; padding: 30px; overflow-y: auto; padding-bottom: 100px; }
+        .header-flex { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 25px; gap: 20px; }
+        
+        /* NOTIFICATION TOAST */
+        #notificationStack { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: white; color: var(--text); padding: 15px 25px; border-radius: 12px; border-left:5px solid var(--danger); box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 12px; animation: slideIn 0.5s ease forwards; }
+        .toast.soon { border-left-color: var(--warning); }
+        .toast.success { border-left-color: var(--success); background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .loss-badge { background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); padding: 15px 25px; border-radius: 15px; text-align: right; }
+        .loss-badge span { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; }
+        .loss-badge b { font-size: 22px; color: var(--danger); }
+
+        /* CARDS */
+        .expiry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .expiry-card { background: var(--card-bg); border-radius: 24px; padding: 25px; border: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; transition: 0.4s; }
+        .status-pill { position: absolute; top: 20px; right: 20px; font-size: 10px; padding: 5px 12px; border-radius: 30px; text-transform: uppercase; font-weight: 800; }
+        
+        .expired { border-top: 4px solid var(--danger); }
+        .expired .status-pill { background: var(--danger); color: white; }
+        .warning { border-top: 4px solid var(--warning); }
+        .warning .status-pill { background: var(--warning); color: #000; }
+
+        .progress-container { height: 6px; background: rgba(255,255,255,0.05); border-radius: 10px; margin: 15px 0; overflow: hidden; }
+        .progress-bar { height: 100%; border-radius: 10px; transition: 1s ease; }
+
+        .discard-btn { color: var(--danger); background: rgba(244, 63, 94, 0.1); border: none; cursor: pointer; font-size: 12px; font-weight: 700; padding: 8px 15px; border-radius: 8px; }
+        .discard-btn:hover { background: var(--danger); color: white; }
+
+        .email-alert-btn { 
+            background: linear-gradient(135deg, #667eea, #764ba2); 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 600; 
+            padding: 12px 20px; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .email-alert-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .email-alert-btn:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .footer { background: rgba(15, 23, 42, 0.95); padding: 15px; position: fixed; bottom: 0; width: 100%; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; }
+    </style>
+</head>
+<body>
+
+<audio id="alertSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+<div id="notificationStack"></div>
+
+<aside class="sidebar">
+    <div class="logo"><i class="fas fa-shield-virus" style="color:var(--danger)"></i> MedNova</div>
+    <nav class="nav-menu">
+        <a href="dashboard.html" class="nav-link"><i class="fas fa-th-large"></i> Overview</a>
+        <a href="inventory.html" class="nav-link"><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="expiry.html" class="nav-link active"><i class="fas fa-exclamation-triangle"></i> Expiry Alerts</a>
+        <a href="sales.html" class="nav-link"><i class="fas fa-receipt"></i> Billing</a>
+        <a href="users.html" class="nav-link"><i class="fas fa-users"></i> User Management</a>
+        <a href="reminders.html" class="nav-link"><i class="fas fa-bell"></i> Pill Reminders</a>
+        <a href="users.html" class="nav-link"><i class="fas fa-users"></i> settings</a>
+    </nav>
+</aside>
+
+<main class="main">
+    <div class="header-flex">
+        <div>
+            <h1 style="font-size: 32px; font-weight: 800;">Safety Monitoring</h1>
+            <p id="currentDate" style="color:var(--text-dim); font-size: 14px;"></p>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; margin-top: 10px;">
+            <button class="email-alert-btn" onclick="sendExpiryEmailAlert()">
+                <i class="fas fa-envelope"></i> Send Email Alert
+            </button>
+            <div class="loss-badge">
+                <span>Potential Expiry Loss</span>
+                <b>₹<span id="totalLoss">0</span></b>
+            </div>
+        </div>
+    </div>
+
+    <div class="expiry-grid" id="expiryContainer"></div>
+</main>
+
+<footer class="footer">
+    <div style="color:var(--text-dim); font-size: 11px;">
+        System Admin: <b>Meghana Chaudhari</b> (Roll: 159) | REAL-TIME SCANNING ENABLED
+    </div>
+</footer>
+
+<script>
+    let inventory = JSON.parse(localStorage.getItem('mednova_db')) || [];
+
+    // Notification Function
+    function triggerNotify(msg, type = 'danger') {
+        const sound = document.getElementById('alertSound');
+        sound.play().catch(e => console.log("Sound blocked by browser. Click anywhere to enable."));
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type === 'soon' ? 'soon' : type === 'success' ? 'success' : ''}`;
+        toast.innerHTML = `<i class="fas ${type === 'soon' ? 'fa-clock' : type === 'success' ? 'fa-check-circle' : 'fa-skull-crossbones'}"></i> <span>${msg}</span>`;
+        
+        const stack = document.getElementById('notificationStack');
+        stack.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 500);
+        }, 4000);
+    }
+
+    function renderExpiry() {
+        const container = document.getElementById('expiryContainer');
+        const lossDisplay = document.getElementById('totalLoss');
+        container.innerHTML = "";
+        
+        const today = new Date();
+        const nextMonth = new Date();
+        nextMonth.setDate(today.getDate() + 30);
+
+        let totalLossValue = 0;
+        let expiredCount = 0;
+        let soonCount = 0;
+
+        let filtered = inventory.filter(m => new Date(m.expiry) <= nextMonth);
+        filtered.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+        filtered.forEach((m) => {
+            const expDate = new Date(m.expiry);
+            const isExpired = expDate < today;
+            const itemLoss = (m.price || 100) * (m.stock || m.quantity || 1);
+
+            if(isExpired) {
+                totalLossValue += itemLoss;
+                expiredCount++;
+            } else {
+                soonCount++;
+            }
+
+            const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+            const progress = isExpired ? 100 : Math.max(5, 100 - (diffDays * 3.3));
+
+            container.innerHTML += `
+                <div class="expiry-card ${isExpired ? 'expired' : 'warning'}">
+                    <span class="status-pill">${isExpired ? 'EXPIRED' : diffDays + ' Days Left'}</span>
+                    <h3 style="margin-bottom:5px;">${m.name || m.medicine_name}</h3>
+                    <p style="color:var(--text-dim); font-size:13px;">Stock: ${m.stock || m.quantity || 0} | Exp: ${m.expiry}</p>
+                    <div class="progress-container">
+                        <div class="progress-bar" style="width: ${progress}%; background: ${isExpired ? 'var(--danger)' : 'var(--warning)'}"></div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <b style="color:var(--danger)">₹${itemLoss}</b>
+                        <button class="discard-btn" onclick="discard('${m.name || m.medicine_name}')">DISCARD</button>
+                    </div>
+                </div>`;
+        });
+
+        lossDisplay.innerText = totalLossValue.toLocaleString();
+
+        // Trigger Notifications on Load
+        if(expiredCount > 0) triggerNotify(`${expiredCount} Items have EXPIRED!`, 'danger');
+        if(soonCount > 0) triggerNotify(`${soonCount} Items expiring soon.`, 'soon');
+    }
+
+    function discard(name) {
+        if(confirm(`Remove ${name} from inventory?`)) {
+            inventory = inventory.filter(m => (m.name || m.medicine_name) !== name);
+            localStorage.setItem('mednova_db', JSON.stringify(inventory));
+            renderExpiry();
+        }
+    }
+
+    // Send Expiry Email Alert Function
+    async function sendExpiryEmailAlert() {
+        const button = document.querySelector('.email-alert-btn');
+        const originalContent = button.innerHTML;
+        
+        try {
+            // Get user email from settings
+            const userEmail = localStorage.getItem('emailAddress') || 'meghana@mednova.pro';
+            
+            console.log('🔍 Debug Info:');
+            console.log('User Email:', userEmail);
+            console.log('Inventory:', inventory);
+            
+            // Disable button and show loading
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            
+            // Get expired medicines from localStorage
+            const today = new Date();
+            const expiredMedicines = inventory.filter(m => {
+                const expDate = new Date(m.expiry);
+                return expDate < today;
+            });
+            
+            console.log('Expired Medicines Found:', expiredMedicines.length);
+            console.log('Expired Medicines:', expiredMedicines);
+            
+            if (expiredMedicines.length === 0) {
+                triggerNotify('No expired medicines found to send alert', 'soon');
+                return;
+            }
+            
+            // Send email via API
+            console.log('📤 Sending email request to API...');
+            const response = await fetch('/api/notifications/send-expiry-alert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: userEmail,
+                    expired_medicines: expiredMedicines
+                })
+            });
+            
+            console.log('📡 API Response Status:', response.status);
+            const result = await response.json();
+            console.log('📡 API Response:', result);
+            
+            if (response.ok) {
+                triggerNotify('✅ Email alert sent successfully to ' + userEmail + '! (' + expiredMedicines.length + ' expired medicines)', 'success');
+                
+                // Play success sound
+                const audio = document.getElementById('alertSound');
+                if (audio) {
+                    audio.play().catch(e => console.log('Audio play failed:', e));
+                }
+            } else {
+                throw new Error(result.error || 'Failed to send email');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error sending email alert:', error);
+            triggerNotify('❌ Failed to send email alert: ' + error.message, 'danger');
+            
+            // Show additional help if backend not running
+            if (error.message && error.message.includes('Failed to fetch')) {
+                triggerNotify('💡 Make sure backend server is running on port 5000', 'warning');
+                triggerNotify('💡 Run: python backend/app.py', 'warning');
+            }
+        } finally {
+            // Restore button
+            button.disabled = false;
+            button.innerHTML = originalContent;
+        }
+    }
+
+    window.onload = () => {
+        document.getElementById('currentDate').innerText = "System Date: " + new Date().toDateString();
+        renderExpiry();
+    };
+</script>
+</body>
+</html>

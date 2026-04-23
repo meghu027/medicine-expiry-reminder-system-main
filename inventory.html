@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedNova | Inventory Control</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --primary: #667eea;
+            --primary-light: #764ba2;
+            --primary-dark: #5a67d8;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --text: #2d3748;
+            --text-light: #4a5568;
+            --text-dim: #64748b;
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea, #764ba2);
+            --gradient-secondary: linear-gradient(135deg, #10B981, #34D399);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: radial-gradient(circle at top right, #f8fafc, #f1f5f9); color: var(--text); height: 100vh; overflow: hidden; display: flex; }
+
+        .sidebar { width: 260px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border-right: 1px solid var(--glass-border); padding: 30px 15px; display: flex; flex-direction: column; z-index: 100; }
+        .sidebar { width: 260px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border-right: 1px solid var(--glass-border); padding: 30px 15px; display: flex; flex-direction: column; z-index: 100; }
+        .logo { font-size: 26px; font-weight: 800; color: var(--primary); margin-bottom: 40px; display: flex; align-items: center; gap: 10px; justify-content: center; }
+        .nav-link { padding: 14px 18px; color: var(--text-dim); text-decoration: none; display: flex; align-items: center; gap: 12px; border-radius: 12px; transition: 0.3s; margin-bottom: 8px; font-weight: 600; }
+        .nav-link.active, .nav-link:hover { background: rgba(16, 185, 129, 0.1); color: var(--primary); }
+
+        .main-wrapper { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; padding-bottom: 100px; }
+
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .action-group { display: flex; gap: 12px; }
+
+        .inventory-card { background: var(--card-bg); border-radius: 28px; padding: 25px; border: 1px solid var(--glass-border); backdrop-filter: blur(10px); }
+        .search-box { background: var(--card-bg); border: 1px solid var(--glass-border); padding: 12px 20px; border-radius: 15px; width: 350px; color: var(--text); outline: none; transition: 0.3s; }
+        .search-box:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(16, 185, 129, 0.2); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { text-align: left; padding: 15px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--glass-border); letter-spacing: 1px; }
+        td { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.03); font-size: 14px; }
+
+        .badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 700; }
+        .badge-low { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-expired { background: rgba(244, 63, 94, 0.15); color: var(--danger); }
+        .badge-safe { background: rgba(16, 185, 129, 0.15); color: var(--primary); }
+
+        /* Toast Notifications */
+        #toastContainer { position: fixed; top: 25px; right: 25px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: white; color: var(--text); padding: 15px 25px; border-radius: 15px; border: 1px solid var(--glass-border); border-left: 5px solid var(--primary); box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 15px; animation: slideIn 0.4s ease; }
+        .toast.danger { border-left-color: var(--danger); }
+        .toast.warning { border-left-color: var(--warning); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .btn { padding: 12px 24px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: 0.3s; border: none; display: flex; align-items: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-outline { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+
+        .footer { background: rgba(255, 255, 255, 0.95); padding: 15px; position: fixed; bottom: 0; width: 100%; text-align: center; border-top: 1px solid var(--glass-border); font-size: 12px; color: var(--text-dim); z-index: 100; }
+        
+        /* Modal */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; backdrop-filter: blur(8px); }
+        .modal { background: white; width: 400px; padding: 30px; border-radius: 28px; border: 1px solid var(--glass-border); }
+        .modal input { width: 100%; background: var(--card-bg); border: 1px solid var(--glass-border); padding: 12px; margin: 10px 0; border-radius: 10px; color: var(--text); outline: none; }
+    </style>
+</head>
+<body>
+
+<div id="toastContainer"></div>
+
+<aside class="sidebar">
+    <div class="logo"><i class="fas fa-notes-medical"></i> MedNova</div>
+    <nav class="nav-menu">
+        <a href="dashboard.html" class="nav-link"><i class="fas fa-th-large"></i> Overview</a>
+        <a href="inventory.html" class="nav-link active"><i class="fas fa-boxes"></i> Inventory</a>
+        <a href="expiry.html" class="nav-link"><i class="fas fa-exclamation-triangle"></i> Expiry Alerts</a>
+        <a href="sales.html" class="nav-link"><i class="fas fa-receipt"></i> Billing</a>
+        <a href="reminders.html" class="nav-link"><i class="fas fa-bell"></i> Pill Reminders</a>
+        <a href="users.html" class="nav-link"><i class="fas fa-users"></i> User Management</a>
+    </nav>
+    <a href="login.html" style="text-decoration:none; color:var(--danger); font-weight:700; padding:15px; margin-top: auto;" onclick="return confirm('Logout?')"><i class="fas fa-sign-out-alt"></i> Logout</a>
+</aside>
+
+<div class="main-wrapper">
+    <main class="main-content">
+        <div class="header-flex">
+            <div>
+                <h1 style="font-weight: 800; font-size: 28px;">Inventory Control</h1>
+                <p style="color: var(--text-dim); font-size: 14px;">Pharmacist: <b>Meghana Chaudhari</b></p>
+            </div>
+            <div class="action-group">
+                <button class="btn btn-primary" onclick="openModal()"><i class="fas fa-plus"></i> Add Medicine</button>
+            </div>
+        </div>
+
+        <div class="inventory-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <input type="text" id="searchInput" class="search-box" placeholder="Search by name..." oninput="renderTable()">
+                <div id="totalCounter" style="font-size: 14px; font-weight: 700; color: var(--primary);"></div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr><th>Medicine Name</th><th>Stock Level</th><th>Unit Price</th><th>Expiry Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody id="inventoryBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div style="font-size: 14px; color: var(--text-dim);">
+            <i class="fas fa-user-shield"></i> System Admin: <b>Meghana Chaudhari</b> | Roll No: 159
+        </div>
+    </footer>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+        <h2 id="modalTitle" style="margin-bottom: 15px;">Stock Entry</h2>
+        <input type="text" id="medName" placeholder="Medicine Name">
+        <input type="number" id="medStock" placeholder="Quantity">
+        <input type="number" id="medPrice" placeholder="Price (₹)">
+        <input type="date" id="medDate">
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="btn btn-primary" style="flex:1; justify-content:center;" onclick="saveData()">Save Record</button>
+            <button onclick="closeModal()" style="flex:1; background:#334155; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:700;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+  // 1. Data Initialization
+let medicines = JSON.parse(localStorage.getItem('mednova_db')) || [
+    { name: "Paracetamol 500mg", stock: 120, expiry: "2026-12-15" },
+    { name: "Amoxicillin Batch-A", stock: 8, expiry: "2026-05-20" },
+    { name: "Insulin Glargine", stock: 45, expiry: "2024-03-01" }, // Expired
+    { name: "Vitamin-D3 Caps", stock: 250, expiry: "2027-01-10" },
+    { name: "Cough Syrup Z", stock: 12, expiry: "2026-08-30" },
+    { name: "Metformin 850mg", stock: 95, expiry: "2026-11-12" },
+    { name: "Atorvastatin 20mg", stock: 5, expiry: "2026-04-15" },  // Low Stock
+    { name: "Ibuprofen 400mg", stock: 60, expiry: "2025-10-22" },
+    { name: "Cetirizine 10mg", stock: 180, expiry: "2027-03-05" },
+    { name: "Azithromycin 500", stock: 3, expiry: "2026-05-10" },   // Low Stock
+    { name: "Amlodipine 5mg", stock: 110, expiry: "2026-09-18" },
+    { name: "Loratadine 10mg", stock: 45, expiry: "2024-12-30" },  // Expired
+    { name: "Pantoprazole 40mg", stock: 75, expiry: "2027-02-14" },
+    { name: "Omeprazole 20mg", stock: 9, expiry: "2026-06-01" },    // Low Stock
+    { name: "Salbutamol Inhaler", stock: 25, expiry: "2026-10-10" }
+
+    ];
+
+    let editIdx = null;
+
+    function renderTable() {
+        const body = document.getElementById('inventoryBody');
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        body.innerHTML = "";
+        
+        let filtered = medicines.filter(m => m.name.toLowerCase().includes(search));
+        const today = new Date();
+
+        filtered.forEach((m, index) => {
+            const isExp = new Date(m.expiry) < today;
+            const isLow = m.stock < 15;
+            const originalIdx = medicines.indexOf(m);
+
+            body.innerHTML += `
+                <tr ${isExp ? 'style="background: rgba(244, 63, 94, 0.05);"' : ''}>
+                    <td><b style="color:#2d3748">${m.name}</b></td>
+                    <td><span class="badge ${isLow ? 'badge-low' : 'badge-safe'}">${m.stock} ${isLow ? 'LOW' : 'Units'}</span></td>
+                    <td>₹${m.price}</td>
+                    <td><span class="badge ${isExp ? 'badge-expired' : 'badge-safe'}">${isExp ? 'EXPIRED' : m.expiry}</span></td>
+                    <td>
+                        <i class="fas fa-edit" onclick="editData(${originalIdx})" style="color:var(--accent); cursor:pointer; margin-right:15px;"></i>
+                        <i class="fas fa-trash-alt" onclick="deleteData(${originalIdx})" style="color:var(--danger); cursor:pointer;"></i>
+                    </td>
+                </tr>`;
+        });
+        document.getElementById('totalCounter').innerText = `Total: ${filtered.length} Medicines`;
+    }
+
+    function showNotify(msg, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type === 'danger' ? 'danger' : type === 'warning' ? 'warning' : ''}`;
+        
+        const icon = type === 'danger' ? 'fa-exclamation-circle' : 'fa-check-circle';
+        
+        toast.innerHTML = `<i class="fas ${icon}"></i> <span>${msg}</span>`;
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 400);
+        }, 3000);
+    }
+
+    function openModal() {
+        document.getElementById('modalOverlay').style.display = 'flex';
+        document.getElementById('modalTitle').innerText = "New Stock Entry";
+        editIdx = null;
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+        document.getElementById('medName').value = "";
+        document.getElementById('medStock').value = "";
+        document.getElementById('medPrice').value = "";
+    }
+
+    function saveData() {
+        const name = document.getElementById('medName').value;
+        const stock = document.getElementById('medStock').value;
+        const price = document.getElementById('medPrice').value;
+        const date = document.getElementById('medDate').value;
+
+        if(!name || !stock || !price || !date) {
+            showNotify("Please fill all fields!", "warning");
+            return;
+        }
+
+        const newMed = { name, stock: parseInt(stock), price: parseFloat(price), expiry: date };
+
+        if(editIdx !== null) {
+            medicines[editIdx] = newMed;
+            showNotify("Record Updated Successfully!");
+        } else {
+            medicines.push(newMed);
+            showNotify("Medicine Added to Inventory!");
+        }
+
+        localStorage.setItem('mednova_db', JSON.stringify(medicines));
+        renderTable();
+        closeModal();
+    }
+
+    function editData(index) {
+        const m = medicines[index];
+        document.getElementById('medName').value = m.name;
+        document.getElementById('medStock').value = m.stock;
+        document.getElementById('medPrice').value = m.price;
+        document.getElementById('medDate').value = m.expiry;
+        
+        document.getElementById('modalOverlay').style.display = 'flex';
+        document.getElementById('modalTitle').innerText = "Edit Medicine";
+        editIdx = index;
+    }
+
+    function deleteData(index) {
+        if(confirm("Are you sure?")) {
+            medicines.splice(index, 1);
+            localStorage.setItem('mednova_db', JSON.stringify(medicines));
+            renderTable();
+            showNotify("Item Removed!", "danger");
+        }
+    }
+
+    function checkInventoryAlerts() {
+        const today = new Date();
+        const lowStock = medicines.filter(m => m.stock < 15).length;
+        const expired = medicines.filter(m => new Date(m.expiry) < today).length;
+
+        if(expired > 0) showNotify(`${expired} Items are Expired!`, "danger");
+        if(lowStock > 0) showNotify(`${lowStock} Items running low!`, "warning");
+    }
+
+    window.onload = () => {
+        renderTable();
+        setTimeout(checkInventoryAlerts, 1000);
+    };
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedNova | Pill Reminders</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --primary: #667eea;
+            --primary-light: #764ba2;
+            --primary-dark: #5a67d8;
+            --secondary: #10B981;
+            --accent: #F59E0B;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --success: #10B981;
+            --text: #2d3748;
+            --text-light: #4a5568;
+            --text-dim: #64748b;
+            --glass-border: rgba(0, 0, 0, 0.1);
+            --gradient-primary: linear-gradient(135deg, #667eea, #764ba2);
+            --gradient-secondary: linear-gradient(135deg, #10B981, #34D399);
+        }
+        body { 
+            background: radial-gradient(circle at top right, #f8fafc, #f1f5f9); 
+            color: var(--text); 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            min-height: 100vh; padding: 40px; margin: 0;
+        }
+        .container { max-width: 850px; margin: 0 auto; }
+        .back-btn { text-decoration: none; color: var(--primary); font-weight: 700; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 25px; font-size: 14px; }
+        
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--glass-border); }
+        .professional-title { font-size: 28px; font-weight: 800; background: linear-gradient(to right, #10b981, #6366f1); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        .reminder-card { background: var(--card-bg); border: 1px solid var(--glass-border); padding: 22px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; backdrop-filter: blur(15px); }
+        .time-tag { background: linear-gradient(135deg, var(--accent), #4f46e5); color: rgb(46, 44, 44); padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 20px; }
+        
+        .add-btn { background: var(--primary); color: rgb(54, 48, 48); border: none; padding: 12px 24px; border-radius: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+        .test-btn { background: rgba(255,255,255,0.1); color: rgb(53, 50, 50); border: 1px solid var(--glass-border); padding: 8px 15px; border-radius: 10px; cursor: pointer; font-size: 12px; margin-top: 10px; }
+        
+        .footer-note { text-align: center; margin-top: 50px; color: #3f5573; font-size: 13px; }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<audio id="alertSound" preload="auto">
+    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+</audio>
+
+<div class="container">
+    <a href="dashboard.html" class="back-btn"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    
+    <div class="header-flex">
+        <div>
+            <h1 class="professional-title">Hey Meghana, Setup Alarms! 👋</h1>
+            <div style="color:var(--primary); font-size: 12px; font-weight: 700; margin-top: 5px;">
+                <i class="fas fa-microchip"></i> SYSTEM STATUS: <span id="sysStatus">SYNCING...</span>
+            </div>
+            <button class="test-btn" onclick="testSound()"><i class="fas fa-volume-up"></i> Click to Test Sound</button>
+        </div>
+        <button class="add-btn" onclick="addReminder()"><i class="fas fa-plus-circle"></i> New Reminder</button>
+    </div>
+
+    <div id="reminderList"></div>
+
+    <div class="footer-note">
+        <b>Meghana Chaudhari (Roll 159)</b> | TYBCA Final Project
+    </div>
+</div>
+
+<script>
+    
+    let reminders = JSON.parse(localStorage.getItem('mednova_reminders')) || [];
+    let audioUnlocked = false;
+
+    // 1. Audio Unlock (Browser Security)
+    function unlockAudio() {
+        if (audioUnlocked) return;
+        const sound = document.getElementById('alertSound');
+        sound.play().then(() => {
+            sound.pause();
+            sound.currentTime = 0;
+            audioUnlocked = true;
+            document.getElementById('sysStatus').innerText = "AUDIO READY | LIVE";
+        }).catch(e => console.log("Waiting for interaction..."));
+    }
+
+    function testSound() {
+        const sound = document.getElementById('alertSound');
+        sound.play();
+        alert("Sound Test Success! Agar awaz aayi toh system ready hai.");
+    }
+
+    // 2. Notification Permission
+    function requestPermission() {
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+    }
+
+    // 3. Main Logic Engine (Checked every 1 second)
+    function startEngine() {
+        setInterval(() => {
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ":" + 
+                                now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds();
+            
+            document.getElementById('sysStatus').innerText = `LIVE: ${currentTime}:${seconds.toString().padStart(2, '0')}`;
+
+            reminders.forEach((r, index) => {
+                // Agar time match kare aur iss minute mein abhi tak notification na di ho
+                if (r.time === currentTime && r.lastNotifiedMinute !== currentTime) {
+                    triggerAlert(r, index);
+                }
+            });
+        }, 1000);
+    }
+
+    function triggerAlert(r, index) {
+        // Sound Play
+        const sound = document.getElementById('alertSound');
+        if (sound) sound.play();
+
+        // Browser Notification
+        if (Notification.permission === "granted") {
+            new Notification("💊 MEDNOVA: " + r.name, {
+                body: `Time for your ${r.dose}!`,
+                icon: "https://cdn-icons-png.flaticon.com/512/883/883356.png"
+            });
+        }
+
+        // Screen Alert
+        setTimeout(() => {
+            alert(`🚨 REMINDER: ${r.name}\nDose: ${r.dose}\n\nTime: ${r.time}`);
+            reminders[index].lastNotifiedMinute = r.time; // Mark as done for this minute
+            saveData();
+        }, 500);
+    }
+
+    function renderReminders() {
+        const list = document.getElementById('reminderList');
+        list.innerHTML = reminders.length === 0 ? '<p style="opacity:0.5; text-align:center; padding:50px;">No reminders set.</p>' : "";
+        
+        reminders.forEach((r, i) => {
+            list.innerHTML += `
+                <div class="reminder-card">
+                    <div>
+                        <h3 style="margin:0;">${r.name}</h3>
+                        <div style="color:var(--primary); font-size:13px; margin-top:5px;"><i class="fas fa-pills"></i> ${r.dose}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:20px;">
+                        <div class="time-tag">${r.time}</div>
+                        <i class="fas fa-trash-alt" style="color:#f43f5e; cursor:pointer;" onclick="deleteReminder(${i})"></i>
+                    </div>
+                </div>`;
+        });
+    }
+
+    function addReminder() {
+        const name = prompt("Medicine Name:");
+        const dose = prompt("Dosage (e.g. 1 Tab):", "1 Tablet");
+        const time = prompt("Time (24hr format HH:MM):", "10:00");
+        
+        if (name && time) {
+            reminders.push({ name, dose, time, lastNotifiedMinute: "" });
+            saveData();
+        }
+    }
+
+    function deleteReminder(i) {
+        if(confirm("Delete this reminder?")) {
+            reminders.splice(i, 1);
+            saveData();
+        }
+    }
+
+    function saveData() {
+        localStorage.setItem('mednova_reminders', JSON.stringify(reminders));
+        renderReminders();
+    }
+
+    window.onload = () => {
+        requestPermission();
+        renderReminders();
+        startEngine();
+    };
+</script>
+</body>
+</html>
